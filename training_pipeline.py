@@ -1,28 +1,29 @@
 from __future__ import annotations
 
 import argparse
-from pprint import pformat
 import math
 from pathlib import Path
+from pprint import pformat
 from typing import Dict, List, Tuple
 
 import joblib
 import matplotlib
 
 matplotlib.use("Agg")  # non-interactive backend for file saving
-import matplotlib.pyplot as plt
 import warnings
 
-warnings.filterwarnings(
-    "ignore", message="The NumPy global RNG was seeded", category=FutureWarning
-)
+import matplotlib.pyplot as plt
+
+warnings.filterwarnings("ignore", message="The NumPy global RNG was seeded", category=FutureWarning)
 
 import numpy as np
 import pandas as pd
 import seaborn as sns
 from sklearn.calibration import CalibrationDisplay
 from sklearn.compose import ColumnTransformer
+from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
 from sklearn.impute import SimpleImputer
+from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import (
     average_precision_score,
     brier_score_loss,
@@ -38,9 +39,6 @@ from sklearn.model_selection import (
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.utils.class_weight import compute_class_weight
-
-from sklearn.linear_model import LogisticRegression
-from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 
 # Try XGBoost; if missing, we'll FALL BACK automatically to GradientBoosting
 try:
@@ -156,12 +154,7 @@ def run_eda(df: pd.DataFrame, target: str, out_dir: Path) -> Dict[str, str]:
     # Correlation heatmap (top ~30)
     num = df.select_dtypes(include=[np.number]).copy()
     if target in num.columns:
-        corrs = (
-            num.corr(numeric_only=True)[target]
-            .dropna()
-            .abs()
-            .sort_values(ascending=False)
-        )
+        corrs = num.corr(numeric_only=True)[target].dropna().abs().sort_values(ascending=False)
         top_feats = [c for c in corrs.index if c != target][:30]
     else:
         top_feats = num.columns[:30].tolist()
@@ -203,9 +196,7 @@ def run_eda(df: pd.DataFrame, target: str, out_dir: Path) -> Dict[str, str]:
 # ----------------------------- PSI ------------------------------------------
 
 
-def psi_1d(
-    expected: np.ndarray, actual: np.ndarray, buckets: int = 10, eps: float = 1e-6
-) -> float:
+def psi_1d(expected: np.ndarray, actual: np.ndarray, buckets: int = 10, eps: float = 1e-6) -> float:
     """
     Compute PSI for one feature with quantile bins learned on `expected` (train).
     Returns NaN if not enough unique values to form bins.
@@ -228,13 +219,9 @@ def psi_1d(
     return float(np.sum((Pa - Pb) * np.log(Pa / Pb)))
 
 
-def compute_psi_table(
-    train_df: pd.DataFrame, test_df: pd.DataFrame, target: str
-) -> pd.DataFrame:
+def compute_psi_table(train_df: pd.DataFrame, test_df: pd.DataFrame, target: str) -> pd.DataFrame:
     """Compute PSI for all numeric features."""
-    feats = [
-        c for c in train_df.select_dtypes(include=[np.number]).columns if c != target
-    ]
+    feats = [c for c in train_df.select_dtypes(include=[np.number]).columns if c != target]
     rows = []
     for c in feats:
         val = psi_1d(train_df[c].values, test_df[c].values)
@@ -279,18 +266,12 @@ def plot_psi_artifacts(
 # ----------------------------- Feature Selection ----------------------------
 
 
-def correlation_filter(
-    df: pd.DataFrame, target: str, threshold: float = 0.95
-) -> List[str]:
+def correlation_filter(df: pd.DataFrame, target: str, threshold: float = 0.95) -> List[str]:
     """
     Drop highly correlated numeric features (keep one per cluster).
     Returns the retained feature list (including target).
     """
-    num = (
-        df.select_dtypes(include=[np.number])
-        .drop(columns=[target], errors="ignore")
-        .copy()
-    )
+    num = df.select_dtypes(include=[np.number]).drop(columns=[target], errors="ignore").copy()
     if num.shape[1] == 0:
         return [target]
     corr = num.corr().abs()
@@ -303,9 +284,7 @@ def correlation_filter(
 # ----------------------------- Preprocessing & Models -----------------------
 
 
-def build_preprocessors(
-    feature_names: List[str], target: str
-) -> Dict[str, ColumnTransformer]:
+def build_preprocessors(feature_names: List[str], target: str) -> Dict[str, ColumnTransformer]:
     """
     Create a ColumnTransformer per model:
       - LR: median impute + StandardScaler
@@ -546,9 +525,7 @@ def evaluate_model(
 # ----------------------------- SHAP ----------------------------------------
 
 
-def compute_shap(
-    model: Pipeline, X_sample: pd.DataFrame, out_dir: Path
-) -> Dict[str, str]:
+def compute_shap(model: Pipeline, X_sample: pd.DataFrame, out_dir: Path) -> Dict[str, str]:
     """
     Compute and save SHAP plots for the best model.
     TreeExplainer for tree models; KernelExplainer fallback if needed.
@@ -652,9 +629,7 @@ def write_markdown_report(
 
         # 2) Preprocessing + Imbalance + PSI
         f.write("## 2) Preprocessing & Imbalance & PSI (why)\n")
-        f.write(
-            "- Median imputation; scale only Logistic Regression; trees are scale-invariant.\n"
-        )
+        f.write("- Median imputation; scale only Logistic Regression; trees are scale-invariant.\n")
         f.write(
             "- Stratified split preserves ~3.2% minority; class weights avoid synthetic artifacts.\n"
         )
@@ -671,9 +646,7 @@ def write_markdown_report(
 
         # 3) Feature Selection
         f.write("## 3) Feature Selection (simple) (why)\n")
-        f.write(
-            "- Correlation filter (|r|>0.95) drops redundancies; reduces variance.\n"
-        )
+        f.write("- Correlation filter (|r|>0.95) drops redundancies; reduces variance.\n")
         f.write("- Preserve interpretability (skip PCA unless overfitting appears).\n")
         f.write("- Apply once; share across models for fairness.\n")
         f.write("- Retain most informative features wrt target.\n\n")
@@ -686,12 +659,8 @@ def write_markdown_report(
 
         # 4) Tuning
         f.write("## 4) Hyperparameter Tuning (simple) (why)\n")
-        f.write(
-            "- RandomizedSearchCV with StratifiedKFold(5) using PR-AUC (handles imbalance).\n"
-        )
-        f.write(
-            "- Small, efficient search spaces to balance compute and performance.\n"
-        )
+        f.write("- RandomizedSearchCV with StratifiedKFold(5) using PR-AUC (handles imbalance).\n")
+        f.write("- Small, efficient search spaces to balance compute and performance.\n")
         f.write("- Parameterized per model; seeds fixed for reproducibility.\n")
         f.write("- Best params & CV PR-AUC below.\n\n")
         f.write("```\n")
@@ -701,9 +670,7 @@ def write_markdown_report(
         # 5–6) Training + Evaluation
         f.write("## 5–6) Training, Calibration, ROC & Comparison (why)\n")
         f.write("- Train LR benchmark + two non-linear models with identical splits.\n")
-        f.write(
-            "- Assess discrimination (ROC-AUC) & probability quality (Calibration, Brier).\n"
-        )
+        f.write("- Assess discrimination (ROC-AUC) & probability quality (Calibration, Brier).\n")
         f.write(
             "- Compare train vs test to spot over/underfitting; prefer stable, calibrated model.\n"
         )
@@ -720,9 +687,7 @@ def write_markdown_report(
         # 7) SHAP
         f.write("## 7) SHAP Interpretability (why)\n")
         f.write("- Reveal global drivers & local attributions to support governance.\n")
-        f.write(
-            "- Align drivers with business intuition (cash flow, leverage, liquidity).\n"
-        )
+        f.write("- Align drivers with business intuition (cash flow, leverage, liquidity).\n")
         f.write("- TreeExplainer for tree models; summary beeswarm & bar.\n\n")
         for k, pth in shap_assets.items():
             f.write(f"- {k}: `{pth}`\n")
@@ -730,25 +695,17 @@ def write_markdown_report(
 
         # 8) PSI Drift
         f.write("## 8) PSI — Drift Monitoring (why)\n")
-        f.write(
-            "- PSI < 0.10: stable; 0.10–0.20: monitor; >0.20: investigate / retrain.\n"
-        )
+        f.write("- PSI < 0.10: stable; 0.10–0.20: monitor; >0.20: investigate / retrain.\n")
         f.write(
             "- Today’s train vs test PSI indicates stable evaluation; set periodic PSI checks in production.\n"
         )
-        f.write(
-            "- If drift detected, re-sample / re-tune / re-train before deployment.\n\n"
-        )
+        f.write("- If drift detected, re-sample / re-tune / re-train before deployment.\n\n")
 
         # 9) Challenges
         f.write("## 9) Challenges & Reflections\n")
         f.write("- Compute budget → small/efficient random search.\n")
-        f.write(
-            "- Class imbalance → PR-AUC objective + class weights; avoided synthetic data.\n"
-        )
-        f.write(
-            "- Interpretability vs performance → skipped PCA; added SHAP for transparency.\n"
-        )
+        f.write("- Class imbalance → PR-AUC objective + class weights; avoided synthetic data.\n")
+        f.write("- Interpretability vs performance → skipped PCA; added SHAP for transparency.\n")
         f.write("- Reproducibility → fixed seeds; deterministic plots & CSVs.\n\n")
 
         # Recommendation
@@ -833,9 +790,7 @@ def main() -> None:
     X_test_sel = X_test[keep_feats].copy()
 
     # Preprocessors & Models
-    preprocessors = build_preprocessors(
-        feature_names=keep_feats + [target], target=target
-    )
+    preprocessors = build_preprocessors(feature_names=keep_feats + [target], target=target)
 
     # Class imbalance handling
     classes = np.array([0, 1])
@@ -846,9 +801,7 @@ def main() -> None:
     models = build_models(pos_weight=pos_weight, preprocessors=preprocessors)
 
     # Tuning
-    tuned_models, tuning_info = tune_models(
-        models, X_train_sel, y_train, n_iter=args.tune_iter
-    )
+    tuned_models, tuning_info = tune_models(models, X_train_sel, y_train, n_iter=args.tune_iter)
 
     # Save tuned models
     for name, mdl in tuned_models.items():
@@ -869,18 +822,14 @@ def main() -> None:
         eval_metrics[name] = m
 
     # Choose best by test PR-AUC
-    best_name = max(
-        eval_metrics.keys(), key=lambda n: eval_metrics[n]["test"]["pr_auc"]
-    )
+    best_name = max(eval_metrics.keys(), key=lambda n: eval_metrics[n]["test"]["pr_auc"])
 
     # SHAP on best model (sample to keep quick)
     shap_assets: Dict[str, str] = {}
     try:
         sample_n = min(800, X_test_sel.shape[0])
         sample_idx = np.random.choice(X_test_sel.index, size=sample_n, replace=False)
-        shap_assets = compute_shap(
-            tuned_models[best_name], X_test_sel.loc[sample_idx], out["shap"]
-        )
+        shap_assets = compute_shap(tuned_models[best_name], X_test_sel.loc[sample_idx], out["shap"])
     except Exception as exc:
         print(f"[WARN] SHAP failed/skipped: {exc}")
 
