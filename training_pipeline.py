@@ -13,9 +13,6 @@ matplotlib.use("Agg")  # non-interactive backend for file saving
 import warnings
 
 import matplotlib.pyplot as plt
-
-warnings.filterwarnings("ignore", message="The NumPy global RNG was seeded", category=FutureWarning)
-
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -38,7 +35,6 @@ from sklearn.model_selection import (
 )
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
-from sklearn.utils.class_weight import compute_class_weight
 
 # Try XGBoost; if missing, we'll FALL BACK automatically to GradientBoosting
 try:
@@ -47,6 +43,14 @@ try:
     XGB_AVAILABLE = True
 except Exception:
     XGB_AVAILABLE = False
+
+# Silence a harmless FutureWarning shown by SHAP on some NumPy versions
+warnings.filterwarnings(
+    "ignore",
+    message="The NumPy global RNG was seeded",
+    category=FutureWarning,
+)
+
 
 RANDOM_STATE = 42
 np.random.seed(RANDOM_STATE)
@@ -630,9 +634,8 @@ def write_markdown_report(
         # 2) Preprocessing + Imbalance + PSI
         f.write("## 2) Preprocessing & Imbalance & PSI (why)\n")
         f.write("- Median imputation; scale only Logistic Regression; trees are scale-invariant.\n")
-        f.write(
-            "- Stratified split preserves ~3.2% minority; class weights avoid synthetic artifacts.\n"
-        )
+        f.write("- Stratified split preserves ~3.2% minority; ")
+        f.write("class weights avoid synthetic artifacts.\n")
         f.write(
             "- PSI(train vs test) < 0.10 across top features → no sampling bias; fair evaluation.\n"
         )
@@ -650,9 +653,8 @@ def write_markdown_report(
         f.write("- Preserve interpretability (skip PCA unless overfitting appears).\n")
         f.write("- Apply once; share across models for fairness.\n")
         f.write("- Retain most informative features wrt target.\n\n")
-        f.write(
-            f"**Selected features (after correlation filter) — count={len([c for c in selected_features if c != target])}**\n\n"
-        )
+        sel_count = len([c for c in selected_features if c != target])
+        f.write(f"**Selected features (after correlation filter) — count={sel_count}**\n\n")
         f.write("```\n")
         f.write(", ".join([c for c in selected_features if c != target]) + "\n")
         f.write("```\n\n")
@@ -696,9 +698,8 @@ def write_markdown_report(
         # 8) PSI Drift
         f.write("## 8) PSI — Drift Monitoring (why)\n")
         f.write("- PSI < 0.10: stable; 0.10–0.20: monitor; >0.20: investigate / retrain.\n")
-        f.write(
-            "- Today’s train vs test PSI indicates stable evaluation; set periodic PSI checks in production.\n"
-        )
+        f.write("- Today’s train vs test PSI indicates stable evaluation.\n")
+        f.write("- Set periodic PSI checks in production.\n")
         f.write("- If drift detected, re-sample / re-tune / re-train before deployment.\n\n")
 
         # 9) Challenges
@@ -712,9 +713,8 @@ def write_markdown_report(
         f.write("## Recommendation\n")
         best = best_model_name
         f.write(f"- Best model by test PR-AUC: **{best}**.\n")
-        f.write(
-            "- Next: threshold tuning to business KPI, add SHAP report to MRM, set PSI monitors in Airflow.\n"
-        )
+        f.write("- Next: threshold tuning to business KPI, add SHAP report to MRM,\n")
+        f.write("- and set PSI monitors in Airflow.\n")
 
     print(f"[OK] Wrote report: {report}")
 
@@ -791,11 +791,8 @@ def main() -> None:
 
     # Preprocessors & Models
     preprocessors = build_preprocessors(feature_names=keep_feats + [target], target=target)
-
     # Class imbalance handling
-    classes = np.array([0, 1])
-    cw = compute_class_weight(class_weight="balanced", classes=classes, y=y_train)
-    # scale_pos_weight for XGB: neg/pos
+    # scale_pos_weight for XGB/GB: neg/pos
     pos_weight = (y_train == 0).sum() / max(1, (y_train == 1).sum())
 
     models = build_models(pos_weight=pos_weight, preprocessors=preprocessors)
