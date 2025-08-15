@@ -1,9 +1,18 @@
 [tool.ruff]
-line-length = 100
 target-version = "py310"
+line-length = 100
+exclude = [
+  ".git",
+  ".venv",
+  "artifacts",
+  "__pycache__",
+  ".ruff_cache",
+  ".mypy_cache",
+  ".pytest_cache",
+]
 
 [tool.ruff.lint]
-# Basic rules: pycodestyle (E), pyflakes (F), import sorting (I)
+# Basic rule sets: pycodestyle (E), pyflakes (F), import sorting (I)
 select = ["E", "F", "I"]
 ignore = []
 
