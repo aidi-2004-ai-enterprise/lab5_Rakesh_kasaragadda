@@ -33,7 +33,7 @@ lab5_Rakesh_kasaragadda/
 ├── requirements.txt
 └── training_pipeline.py
 
-🧠 Lab-4 Decisions carried into Lab-5 (why)
+🧠 Building on Lab-4 Decisions
 
 Models: Logistic Regression (benchmark, interpretable); Random Forest + XGB/GB for non-linear signal.
 
