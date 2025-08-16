@@ -2,13 +2,6 @@
 
 End-to-end pipeline that automates **EDA → preprocessing → stratified split → PSI drift → simple feature selection → simple tuning → training (LR, RF, XGB/GB) → calibration/ROC/Brier → SHAP** and writes a Markdown report you can export to PDF.
 
----
-
-## 🔗 Video & Report
-- **Video (5 min):** _add your link here_
-- **Report (MD):** `artifacts/report.md` → Print → **Save as PDF** (optional `artifacts/report.pdf`)
-
----
 
 ## ⚡ Quickstart
 ```bash
@@ -50,7 +43,7 @@ Split & drift: Stratified 70/30 + PSI to guard sampling bias.
 
 Preprocessing: Median imputation; scale LR only; use class weights / scale_pos_weight; no SMOTE by default.
 
-✅ Answers (Jot-note Rationale)
+✅ Answers
 ---
 
 ## 1) EDA (why)
