@@ -1,5 +1,4 @@
 name: Lint
-
 on: [push, pull_request]
 
 jobs:
@@ -13,6 +12,6 @@ jobs:
       - name: Install Ruff
         run: pip install ruff
       - name: Ruff check
-        run: ruff check .
+        run: ruff check . --config pyproject.toml
       - name: Ruff format (verify no changes)
-        run: ruff format --check .
+        run: ruff format --check .   # fails if formatting needed
