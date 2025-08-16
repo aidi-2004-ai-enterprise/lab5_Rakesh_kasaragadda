@@ -3,7 +3,7 @@
 
 ---
 
-## 0) Link to Lab 4 Decisions (why)
+## Decisions (why)
 - Use **LogReg** as benchmark (interpretability); add **RF** + **XGB/GB** for non-linear signal.
 - **PR-AUC** as primary metric (minority ~3.2%); monitor ROC-AUC, **Brier**, F1@0.5.
 - **Stratified split + PSI** to guard sampling bias/drift.
