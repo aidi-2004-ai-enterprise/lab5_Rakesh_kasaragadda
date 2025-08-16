@@ -16,7 +16,8 @@ source .venv/Scripts/activate
 pip install -r requirements.txt
 python training_pipeline.py --data_source kaggle --artifacts_dir artifacts --tune_iter 20
 ```
-📁 Project Structure (as in this repo)
+📁 Project Structure 
+
 lab5_Rakesh_kasaragadda/
 ├── .github/
 │   └── workflows/
